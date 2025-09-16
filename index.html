@@ -1,35 +1,245 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>机械自动化案例学习平台（示例）</title>
-  <style>
-    body { font-family: Arial, "Microsoft Yahei", sans-serif; max-width:900px; margin:40px auto; padding:0 16px; color:#222; }
-    header { text-align:center; margin-bottom:24px; }
-    .case { border:1px solid #ddd; padding:16px; border-radius:8px; margin-bottom:16px; }
-    .btn { display:inline-block; padding:10px 16px; background:#0070f3; color:white; text-decoration:none; border-radius:6px; }
-    .small { font-size:0.9em; color:#555; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>机械自动化案例学习平台（示例）</h1>
-    <p class="small">示例页面：点击“下载图纸”即可从对象存储下载模型文件。</p>
-  </header>
+// pages/index.tsx
+// Next.js single-file homepage + resource list (mocked data)
+// Tailwind CSS required in the project (postcss + tailwind.config.js)
 
-  <section class="case">
-    <h2>案例 1：输送线模块（示例）</h2>
-    <p>功能：演示简单输送线的机构设计、定位与夹具。</p>
-    <p class="small">说明：此处放案例解析、结构图与说明文字。</p>
-    <p>
-      <!-- 把下面的 URL 替换为你 OSS/S3 上传后得到的文件链接 -->
-      <a class="btn" href="https://YOUR_STORAGE_DOMAIN/path/to/your-file.zip" download>下载图纸（ZIP）</a>
-    </p>
-  </section>
+import Head from 'next/head'
+import { useState, useMemo } from 'react'
 
-  <footer class="small">
-    <p>联系/合作：your-email@example.com</p>
-  </footer>
-</body>
-</html>
+type Resource = {
+  id: string
+  title: string
+  description: string
+  uploader: string
+  formats: string[]
+  size: string
+  downloads: number
+  preview: string
+  tags: string[]
+  category: string
+  createdAt: string
+}
+
+const MOCK_RESOURCES: Resource[] = Array.from({ length: 18 }).map((_, i) => ({
+  id: `r-${i + 1}`,
+  title: `机械零件图纸示例 ${i + 1}`,
+  description: `这是一个示例资源，包含多视角图纸与 STEP/DWG 格式，可用于教学与参考。示例编号 ${i + 1}`,
+  uploader: `用户${(i % 5) + 1}`,
+  formats: i % 3 === 0 ? ['STEP', 'DWG'] : i % 3 === 1 ? ['IGES', 'SLDPRT'] : ['DXF'],
+  size: `${(Math.round(Math.random() * 400) + 50)} KB`,
+  downloads: Math.round(Math.random() * 5000),
+  preview: `https://picsum.photos/seed/mfcad${i + 1}/600/360`,
+  tags: ['齿轮', '传动', i % 2 === 0 ? '汽车' : '通用'],
+  category: ['零件', '装配', '模具'][i % 3],
+  createdAt: new Date(Date.now() - (i * 86400000)).toISOString().slice(0, 10),
+}))
+
+export default function Home() {
+  const [query, setQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const pageSize = 9
+
+  const categories = ['全部', '零件', '装配', '模具']
+  const formats = ['全部', 'DWG', 'STEP', 'IGES', 'SLDPRT', 'DXF']
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return MOCK_RESOURCES.filter((r) => {
+      if (selectedCategory && selectedCategory !== '全部' && r.category !== selectedCategory) return false
+      if (selectedFormat && selectedFormat !== '全部' && !r.formats.includes(selectedFormat)) return false
+      if (!q) return true
+      // search title, description, tags, uploader
+      return (
+        r.title.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.tags.join(' ').toLowerCase().includes(q) ||
+        r.uploader.toLowerCase().includes(q)
+      )
+    })
+  }, [query, selectedCategory, selectedFormat])
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const pageData = filtered.slice((page - 1) * pageSize, page * pageSize)
+
+  function resetFilters() {
+    setQuery('')
+    setSelectedCategory(null)
+    setSelectedFormat(null)
+    setPage(1)
+  }
+
+  return (
+    <>
+      <Head>
+        <title>mfcad-clone — CAD 资源 • 首页</title>
+        <meta name="description" content="仿制示例：CAD 图纸/模型素材平台首页与资源列表 - Next.js + Tailwind" />
+      </Head>
+
+      <div className="min-h-screen bg-gray-50 text-gray-900">
+        {/* Header */}
+        <header className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-4">
+                <div className="text-xl font-semibold text-indigo-600">mfcad-clone</div>
+                <nav className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
+                  <a className="px-2 py-1 hover:text-indigo-600" href="#">首页</a>
+                  <a className="px-2 py-1 hover:text-indigo-600" href="#">素材</a>
+                  <a className="px-2 py-1 hover:text-indigo-600" href="#">教程</a>
+                </nav>
+              </div>
+
+              <div className="flex items-center space-x-4">
+                <div className="hidden sm:block">
+                  <div className="relative">
+                    <input
+                      value={query}
+                      onChange={(e) => { setQuery(e.target.value); setPage(1) }}
+                      className="w-72 pl-3 pr-10 py-2 border rounded-md bg-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                      placeholder="搜索 CAD 图纸、模型、教程..."
+                    />
+                    <button className="absolute right-1 top-1/2 -translate-y-1/2 px-3 py-1 text-sm bg-indigo-600 text-white rounded-md" onClick={() => setPage(1)}>搜索</button>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button className="text-sm px-3 py-1 border rounded-md">登录</button>
+                  <button className="text-sm px-3 py-1 bg-indigo-600 text-white rounded-md">注册</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Hero */}
+        <div className="bg-gradient-to-r from-indigo-50 to-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              <div className="md:col-span-2">
+                <h1 className="text-3xl font-extrabold text-gray-900">CAD 图纸与 3D 模型资源</h1>
+                <p className="mt-3 text-gray-600">搜集机械工程常用的图纸与模型，支持多格式预览与下载。适合制造工程师、设计师与学生。</p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button onClick={() => { setSelectedCategory('零件'); setPage(1) }} className="px-3 py-1 bg-white border rounded-md text-sm">零件</button>
+                  <button onClick={() => { setSelectedCategory('装配'); setPage(1) }} className="px-3 py-1 bg-white border rounded-md text-sm">装配</button>
+                  <button onClick={() => { setSelectedCategory('模具'); setPage(1) }} className="px-3 py-1 bg-white border rounded-md text-sm">模具</button>
+                  <button onClick={resetFilters} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm">重置筛选</button>
+                </div>
+              </div>
+
+              <div className="hidden md:block">
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <div className="text-sm text-gray-500">快速筛选</div>
+                  <div className="mt-3 space-y-2">
+                    <select value={selectedCategory ?? '全部'} onChange={(e) => { setSelectedCategory(e.target.value === '全部' ? null : e.target.value); setPage(1) }} className="w-full border rounded-md px-3 py-2 text-sm">
+                      {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+
+                    <select value={selectedFormat ?? '全部'} onChange={(e) => { setSelectedFormat(e.target.value === '全部' ? null : e.target.value); setPage(1) }} className="w-full border rounded-md px-3 py-2 text-sm">
+                      {formats.map((f) => <option key={f} value={f}>{f}</option>)}
+                    </select>
+
+                    <div className="text-xs text-gray-500">共 {filtered.length} 个结果</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Sidebar */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-24 bg-white p-4 rounded-md shadow-sm">
+                <div className="text-sm font-medium text-gray-700">分类</div>
+                <ul className="mt-3 space-y-2 text-sm text-gray-600">
+                  {categories.map((c) => (
+                    <li key={c}>
+                      <button onClick={() => { setSelectedCategory(c === '全部' ? null : c); setPage(1) }} className={`w-full text-left px-2 py-1 rounded-md ${selectedCategory === c ? 'bg-indigo-50 text-indigo-600' : 'hover:bg-gray-50'}`}>
+                        {c}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-6 text-sm font-medium text-gray-700">最新上传</div>
+                <div className="mt-3 space-y-2 text-sm">
+                  {MOCK_RESOURCES.slice(0, 4).map((r) => (
+                    <div key={r.id} className="flex items-start gap-2">
+                      <img src={r.preview} alt={r.title} className="w-12 h-8 object-cover rounded-md" />
+                      <div>
+                        <div className="truncate w-36">{r.title}</div>
+                        <div className="text-xs text-gray-400">{r.createdAt}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+
+            {/* Resource Grid */}
+            <section className="lg:col-span-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pageData.map((r) => (
+                  <article key={r.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div className="relative">
+                      <img src={r.preview} alt={r.title} className="w-full h-44 object-cover" />
+                      <div className="absolute left-2 top-2 bg-black bg-opacity-40 text-white text-xs px-2 py-1 rounded-md">{r.formats.join(' • ')}</div>
+                    </div>
+
+                    <div className="p-3">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">{r.title}</h3>
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-2">{r.description}</p>
+
+                      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center gap-3">
+                          <div>上传者 {r.uploader}</div>
+                          <div>· {r.size}</div>
+                        </div>
+                        <div>{r.downloads} 次下载</div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {r.tags.map((t) => (
+                            <span key={t} className="text-xs px-2 py-0.5 border rounded-md">{t}</span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button className="text-sm px-3 py-1 border rounded-md">预览</button>
+                          <button className="text-sm px-3 py-1 bg-indigo-600 text-white rounded-md">下载</button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              {/* Pagination */}
+              <div className="mt-6 flex items-center justify-center gap-3">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="px-3 py-1 border rounded-md disabled:opacity-50">上一页</button>
+                <div className="text-sm text-gray-600">{page} / {pageCount}</div>
+                <button onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={page >= pageCount} className="px-3 py-1 border rounded-md disabled:opacity-50">下一页</button>
+              </div>
+            </section>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-white border-t mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-500">
+            © {new Date().getFullYear()} mfcad-clone. 示例项目，仅用于演示界面与功能实现。
+          </div>
+        </footer>
+      </div>
+
+      <style jsx global>{`
+        /* small helper: clamp lines for description */
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+      `}</style>
+    </>
+  )
+}
